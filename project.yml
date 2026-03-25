@@ -13,6 +13,23 @@ settings:
     DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
     ENABLE_HARDENED_RUNTIME: YES
 
+schemes:
+  TodoApp:
+    build:
+      targets:
+        TodoApp: all
+        TodoWidgetExtension: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
 targets:
   TodoApp:
     type: application

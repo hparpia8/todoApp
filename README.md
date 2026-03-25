@@ -1,11 +1,11 @@
 # Artisanal Todo
 
-A simple, local-only todo app for macOS with a warm pen-and-paper feel.
+A simple, local-only macOS todo app with a warm pen-and-paper feel.
 
-- One scrollable page — active tasks at the bottom, history above
-- Fully offline — all data stays on your machine
-- macOS widget (shows up to 10 pending tasks)
-- Light, Dark, and Auto (system) appearance modes
+- One continuous scrollable page — active tasks at the bottom, history above
+- Fully offline — data never leaves your machine
+- macOS desktop widget (3, 5, or 10 tasks at a glance)
+- Light, Dark, and Auto (follows system) appearance modes
 
 **Requires macOS 14 (Sonoma) or later.**
 
@@ -17,61 +17,122 @@ A simple, local-only todo app for macOS with a warm pen-and-paper feel.
 curl -fsSL https://raw.githubusercontent.com/hparpia8/todoApp/main/install.sh | bash
 ```
 
-This downloads the latest release from GitHub and copies it to `/Applications`.
+Downloads the latest release from GitHub Releases and copies it to `/Applications`. You'll be prompted to launch the app when done.
 
-> **Widget setup:** After installing, right-click your desktop → Edit Widgets → search "Artisanal Todo".
+> **Note:** The curl installer requires a published GitHub Release with a `TodoApp.dmg` attached. See [Publishing a release](#publishing-a-release) below.
 
 ---
 
-## How it works
+## How to use
 
 | Action | Result |
 |--------|--------|
-| Type in the bar at the bottom + press Return | Adds a task |
-| Click the circle next to a task | Marks it complete (moves to history) |
+| Type in the bottom bar + press **Return** | Adds a task |
+| Click the circle next to a task | Marks it complete — moves to history |
 | Click a completed circle | Restores the task to active |
-| Scroll up | Browse completed history |
-| Right-click a task | Delete |
+| Scroll up | Browse all completed history |
+| Right-click a task | Delete it |
+| ☀ · ◑ · ☾ buttons in the header | Switch Light / Auto / Dark mode |
+
+### Adding the widget
+
+1. Right-click your macOS desktop → **Edit Widgets**
+2. Search for **Artisanal Todo**
+3. Choose Small (3 tasks), Medium (5), or Large (10)
+
+> The widget requires the app to be installed and launched at least once. For live data, the app must be signed with an Apple Developer account (see [Widget & signing](#widget--signing)).
 
 ---
 
-## Build from source
+## Build & test locally
 
 **Prerequisites:** Xcode 15+, Homebrew
+
+### Quick start
 
 ```bash
 git clone https://github.com/hparpia8/todoApp.git
 cd todoApp
-./setup.sh        # installs XcodeGen, generates TodoApp.xcodeproj
+./setup.sh
+```
+
+`setup.sh` installs [XcodeGen](https://github.com/yonaskolb/XcodeGen) via Homebrew and generates `TodoApp.xcodeproj`.
+
+Then open in Xcode:
+
+```bash
 open TodoApp.xcodeproj
 ```
 
-Or use `make`:
+**Important:** In Xcode's toolbar, make sure the scheme is set to **TodoApp** (not `TodoWidgetExtension`) before pressing ⌘R.
+
+```
+[TodoApp] > [My Mac]   ▶
+```
+
+### Using make
 
 ```bash
-make setup    # install deps + generate project
+make setup    # install XcodeGen + generate project
 make open     # open in Xcode
-make build    # build from terminal
+make build    # build from the terminal
+make archive  # build a release archive
+make clean    # remove generated project + build output
+```
+
+### Running from the terminal (after building)
+
+```bash
+make build
+# the app binary lands in Xcode's DerivedData — open it from Xcode with ⌘R
 ```
 
 ---
 
 ## Data storage
 
-- **With Apple Developer account (signed):** stored in the App Group container at `~/Library/Group Containers/group.com.artisanal.todo/todos.json`
-- **Unsigned / development builds:** stored at `~/Library/Application Support/ArtisanalTodo/todos.json`
+| Build type | Storage location |
+|------------|-----------------|
+| Signed (Apple Developer account) | `~/Library/Group Containers/group.com.artisanal.todo/todos.json` |
+| Unsigned / development | `~/Library/Application Support/ArtisanalTodo/todos.json` |
 
-The widget reads from the same location. For the widget to display real data in unsigned builds, both paths must match — which they will as long as you run the app at least once.
+To inspect your data at any time:
+
+```bash
+cat ~/Library/Application\ Support/ArtisanalTodo/todos.json
+```
 
 ---
 
-## Future plans
+## Widget & signing
 
-- [ ] App Store release (macOS, iOS)
-- [ ] Tags / projects
-- [ ] Keyboard shortcuts
-- [ ] Due dates
-- [ ] iOS / Android companion apps
+The WidgetKit extension is always sandboxed by macOS. For the widget to read live data from the app, both targets must share an **App Group** (`group.com.artisanal.todo`), which requires a valid Apple Developer account.
+
+**To enable for App Store / signed distribution:**
+
+1. Add your Team ID in Xcode → Signing & Capabilities
+2. Create the App Group `group.com.artisanal.todo` in your [Apple Developer portal](https://developer.apple.com/account/resources/identifiers/list/applicationGroup)
+3. In both entitlements files, uncomment the App Groups section:
+   ```xml
+   <key>com.apple.security.application-groups</key>
+   <array><string>group.com.artisanal.todo</string></array>
+   ```
+4. Enable sandbox in `TodoApp.entitlements` (`com.apple.security.app-sandbox = true`)
+
+For unsigned/development builds the widget shows placeholder data — the main app works fully.
+
+---
+
+## Publishing a release
+
+To make the curl installer work:
+
+1. Archive the app: `make archive` (or Xcode → Product → Archive)
+2. Export `TodoApp.app` from the archive
+3. Wrap it in a DMG named `TodoApp.dmg`
+4. Create a GitHub Release and attach `TodoApp.dmg`
+
+The install script automatically fetches the latest release.
 
 ---
 
@@ -79,18 +140,31 @@ The widget reads from the same location. For the widget to display real data in 
 
 ```
 todoApp/
-├── project.yml              XcodeGen project spec
-├── setup.sh                 Dev setup script
+├── project.yml              XcodeGen spec — source of truth for the Xcode project
+├── setup.sh                 Dev setup (installs XcodeGen + generates project)
 ├── install.sh               Curl-installable release script
-├── Makefile                 Build commands
+├── Makefile                 Build shortcuts
 ├── TodoApp/
-│   ├── App/                 App entry point
-│   ├── Views/               SwiftUI views
-│   ├── Models/              Data model + store
-│   ├── Theme/               Colors, fonts, layout constants
-│   └── Assets.xcassets/     Color assets (light + dark variants)
-└── TodoWidget/              WidgetKit extension
+│   ├── App/                 App entry point (@main)
+│   ├── Views/               ContentView, TodoRowView
+│   ├── Models/              TodoItem (shared with widget), TodoStore
+│   ├── Theme/               AppTheme colors + fonts, AppColorScheme enum
+│   └── Assets.xcassets/     7 adaptive color sets (light + dark variants)
+└── TodoWidget/              WidgetKit extension (Small / Medium / Large)
 ```
+
+> `TodoApp.xcodeproj` is git-ignored — regenerate it anytime with `xcodegen generate` or `./setup.sh`.
+
+---
+
+## Roadmap
+
+- [ ] App Store release (macOS)
+- [ ] iOS companion app
+- [ ] Android app
+- [ ] Due dates
+- [ ] Tags / projects
+- [ ] Keyboard shortcuts
 
 ---
 
