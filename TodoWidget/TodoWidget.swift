@@ -74,25 +74,22 @@ struct TodoWidgetEntryView: View {
     var overflow: Int { max(0, entry.items.count - maxItems) }
 
     var body: some View {
-        ZStack {
-            Color("AppBackground")
+        VStack(alignment: .leading, spacing: 0) {
+            widgetHeader
+            Rectangle()
+                .fill(Color("AppPaperLine"))
+                .frame(height: 0.5)
+                .padding(.horizontal, 12)
 
-            VStack(alignment: .leading, spacing: 0) {
-                widgetHeader
-                Rectangle()
-                    .fill(Color("AppPaperLine"))
-                    .frame(height: 0.5)
-                    .padding(.horizontal, 12)
-
-                if entry.items.isEmpty {
-                    allDoneView
-                } else {
-                    itemList
-                }
-
-                Spacer(minLength: 0)
+            if entry.items.isEmpty {
+                allDoneView
+            } else {
+                itemList
             }
+
+            Spacer(minLength: 0)
         }
+        .containerBackground(Color("AppBackground"), for: .widget)
     }
 
     var widgetHeader: some View {
@@ -171,4 +168,39 @@ struct TodoWidget: Widget {
         .description("Your tasks, always at a glance.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
+}
+
+// MARK: - Previews
+
+private let previewItems = [
+    TodoItem(title: "Buy fresh coffee beans"),
+    TodoItem(title: "Read for 30 minutes"),
+    TodoItem(title: "Call the dentist"),
+    TodoItem(title: "Water the plants"),
+    TodoItem(title: "Take a short walk"),
+    TodoItem(title: "Reply to emails"),
+]
+
+#Preview("Small", as: .systemSmall) {
+    TodoWidget()
+} timeline: {
+    TodoEntry(date: .now, items: previewItems)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    TodoWidget()
+} timeline: {
+    TodoEntry(date: .now, items: previewItems)
+}
+
+#Preview("Large", as: .systemLarge) {
+    TodoWidget()
+} timeline: {
+    TodoEntry(date: .now, items: previewItems)
+}
+
+#Preview("Empty", as: .systemMedium) {
+    TodoWidget()
+} timeline: {
+    TodoEntry(date: .now, items: [])
 }
