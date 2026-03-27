@@ -43,8 +43,7 @@ enum WidgetStore {
     static var fileURL: URL? {
         if let groupURL = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: "group.com.artisanal.todo"
-        ) {
-            try? FileManager.default.createDirectory(at: groupURL, withIntermediateDirectories: true)
+        ), FileManager.default.fileExists(atPath: groupURL.path) {
             return groupURL.appendingPathComponent("todos.json")
         }
         // Fallback: widget's own sandbox container (unsigned builds)
