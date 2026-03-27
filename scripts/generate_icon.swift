@@ -2,9 +2,10 @@
 // Generates Light, Dark, and Tinted app icon variants for macOS + iOS.
 // Run from the project root: swift scripts/generate_icon.swift
 //
-// Layout: ruled-paper background, vertical stack —
-//   header rule (like a notepad divider), checked box (top), unchecked box (below).
-// Clipped to a continuous rounded rectangle (squircle, superellipse n = 4.5).
+// Layout: plain background, squircle (superellipse n=4.5).
+//   – Two left-aligned rows: checkbox on left, text pill on right.
+//   – Checked box: solid copper fill + white checkmark (modern iOS style).
+//   – Unchecked box: thin stroke, copper-toned, no fill.
 
 import Foundation
 import CoreGraphics
@@ -14,49 +15,38 @@ import ImageIO
 
 struct Palette {
     let background:      CGColor
-    let paperLine:       CGColor   // horizontal ruled lines
-    let headerRule:      CGColor   // single accent line above the checked box
-    let uncheckedStroke: CGColor
-    let checkedStroke:   CGColor
-    let checkmark:       CGColor
-    let checkedFill:     CGColor
+    let checkedFill:     CGColor   // solid fill for the checked box
+    let checkmark:       CGColor   // mark inside checked box
+    let uncheckedStroke: CGColor   // stroke for the empty box
+    let textLine:        CGColor   // subtle pill beside each row
 }
 
 let light = Palette(
-    background:      CGColor(red: 0.973, green: 0.961, blue: 0.918, alpha: 1.000),
-    paperLine:       CGColor(red: 0.820, green: 0.805, blue: 0.768, alpha: 0.900),
-    headerRule:      CGColor(red: 0.722, green: 0.451, blue: 0.200, alpha: 0.380),
-    uncheckedStroke: CGColor(red: 0.420, green: 0.384, blue: 0.345, alpha: 1.000),
-    checkedStroke:   CGColor(red: 0.722, green: 0.451, blue: 0.200, alpha: 1.000),
-    checkmark:       CGColor(red: 0.722, green: 0.451, blue: 0.200, alpha: 1.000),
-    checkedFill:     CGColor(red: 0.722, green: 0.451, blue: 0.200, alpha: 0.100)
+    background:      CGColor(red: 0.973, green: 0.953, blue: 0.922, alpha: 1.000),
+    checkedFill:     CGColor(red: 0.710, green: 0.435, blue: 0.178, alpha: 1.000),
+    checkmark:       CGColor(red: 1.000, green: 1.000, blue: 1.000, alpha: 1.000),
+    uncheckedStroke: CGColor(red: 0.710, green: 0.435, blue: 0.178, alpha: 0.420),
+    textLine:        CGColor(red: 0.380, green: 0.345, blue: 0.305, alpha: 0.260)
 )
 
 let dark = Palette(
     background:      CGColor(red: 0.110, green: 0.102, blue: 0.090, alpha: 1.000),
-    paperLine:       CGColor(red: 0.220, green: 0.200, blue: 0.175, alpha: 0.900),
-    headerRule:      CGColor(red: 0.784, green: 0.518, blue: 0.227, alpha: 0.420),
-    uncheckedStroke: CGColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 1.000),
-    checkedStroke:   CGColor(red: 0.784, green: 0.518, blue: 0.227, alpha: 1.000),
-    checkmark:       CGColor(red: 0.784, green: 0.518, blue: 0.227, alpha: 1.000),
-    checkedFill:     CGColor(red: 0.784, green: 0.518, blue: 0.227, alpha: 0.140)
+    checkedFill:     CGColor(red: 0.784, green: 0.518, blue: 0.227, alpha: 1.000),
+    checkmark:       CGColor(red: 1.000, green: 1.000, blue: 1.000, alpha: 1.000),
+    uncheckedStroke: CGColor(red: 0.784, green: 0.518, blue: 0.227, alpha: 0.380),
+    textLine:        CGColor(red: 0.478, green: 0.447, blue: 0.408, alpha: 0.320)
 )
 
-// Tinted: transparent BG + white elements — system overlays the user's accent colour
 let tinted = Palette(
     background:      CGColor(red: 0, green: 0, blue: 0, alpha: 0.000),
-    paperLine:       CGColor(red: 1, green: 1, blue: 1, alpha: 0.120),
-    headerRule:      CGColor(red: 1, green: 1, blue: 1, alpha: 0.500),
-    uncheckedStroke: CGColor(red: 1, green: 1, blue: 1, alpha: 0.700),
-    checkedStroke:   CGColor(red: 1, green: 1, blue: 1, alpha: 1.000),
-    checkmark:       CGColor(red: 1, green: 1, blue: 1, alpha: 1.000),
-    checkedFill:     CGColor(red: 1, green: 1, blue: 1, alpha: 0.180)
+    checkedFill:     CGColor(red: 1, green: 1, blue: 1, alpha: 1.000),
+    checkmark:       CGColor(red: 0, green: 0, blue: 0, alpha: 0.600),
+    uncheckedStroke: CGColor(red: 1, green: 1, blue: 1, alpha: 0.450),
+    textLine:        CGColor(red: 1, green: 1, blue: 1, alpha: 0.260)
 )
 
 // ── Squircle path ─────────────────────────────────────────────────────────
 
-/// Superellipse (squircle) path — approximates Apple's "continuous corner" style.
-/// n ≈ 4.5 closely matches iMessage / macOS icon geometry.
 func squirclePath(size: CGFloat) -> CGPath {
     let path  = CGMutablePath()
     let cx    = size / 2
@@ -92,96 +82,81 @@ func makeIcon(size: Int, palette p: Palette) -> CGImage {
     ctx.setLineCap(.round)
     ctx.setLineJoin(.round)
 
-    // ── Clip to squircle + fill background ────────────────────────────────
-
+    // ── Squircle clip + plain background ──────────────────────────────────
     ctx.addPath(squirclePath(size: s))
     ctx.clip()
-
     ctx.setFillColor(p.background)
     ctx.fill(CGRect(x: 0, y: 0, width: s, height: s))
 
-    // ── Ruled lines (paper texture) ───────────────────────────────────────
-    // Only draw for sizes where detail is legible (≥ 64 px)
+    // ── Layout ────────────────────────────────────────────────────────────
+    // Apple HIG: content should fill ~80% of the icon canvas,
+    // leaving ~10% safe margin on each side.
+    // Row spans from 10% left to 88% right (78% width).
+    // Stack spans ~64% of height, ~18% padding top/bottom.
 
-    if size >= 64 {
-        let lineSpacing = s * 0.083
-        let marginX     = s * 0.06
-        let lineWidth   = max(0.5, s * 0.006)
+    let bs      = s * 0.285             // box side
+    let gap     = s * 0.072             // gap between rows
+    let lw      = max(1.0, s * 0.018)  // stroke — thin and refined
+    let cr      = bs * 0.22             // slightly rounder corners = modern feel
 
-        ctx.setStrokeColor(p.paperLine)
-        ctx.setLineWidth(lineWidth)
+    let tlH     = s * 0.026
+    let tl1W    = s * 0.420             // checked row pill (shorter)
+    let tl2W    = s * 0.475             // unchecked row pill
+    let tlCR    = tlH * 0.5
+    let itemGap = s * 0.025
 
-        var lineY = s * 0.05 + lineSpacing
-        while lineY < s * 0.96 {
-            ctx.move(to:    CGPoint(x: marginX,     y: lineY))
-            ctx.addLine(to: CGPoint(x: s - marginX, y: lineY))
-            ctx.strokePath()
-            lineY += lineSpacing
-        }
-    }
+    let rowX       = s * 0.100
+    let totalH     = bs * 2 + gap
+    let stackBottom = (s - totalH) / 2
 
-    // ── Layout — vertical stack, centred ──────────────────────────────────
-    // CGContext y-axis is bottom-up: high y = visually top.
-    // Checked box is drawn at higher y (visually on top).
-    // Unchecked box is drawn at lower y (visually below).
+    let uncheckedY = stackBottom
+    let checkedY   = stackBottom + bs + gap
 
-    let bs          = s * 0.285          // box side length
-    let gap         = s * 0.055          // gap between boxes
-    let lw          = max(1.0, s * 0.034)
-    let cr          = bs * 0.14          // corner radius for boxes
-
-    let totalHeight = bs * 2 + gap
-    let stackBottom = (s - totalHeight) / 2
-
-    let uncheckedOriginY = stackBottom          // bottom of lower box
-    let checkedOriginY   = stackBottom + bs + gap  // bottom of upper box
-
-    let ox = (s - bs) / 2               // horizontal centre
-
-    // ── Header rule ───────────────────────────────────────────────────────
-    // A single thicker line sitting above the checked box, like a notepad
-    // header divider marking where tasks begin.
-
-    if size >= 64 {
-        let headerLineY = checkedOriginY + bs + s * 0.048
-        let headerLW    = max(0.8, s * 0.009)
-        ctx.setStrokeColor(p.headerRule)
-        ctx.setLineWidth(headerLW)
-        ctx.move(to:    CGPoint(x: s * 0.06, y: headerLineY))
-        ctx.addLine(to: CGPoint(x: s * 0.94, y: headerLineY))
-        ctx.strokePath()
-    }
-
-    // ── Checked box (top, visually above) ────────────────────────────────
-
-    let checkedRect = CGRect(x: ox, y: checkedOriginY, width: bs, height: bs)
+    // ── Checked box — solid fill + white checkmark ────────────────────────
+    let checkedRect = CGRect(x: rowX, y: checkedY, width: bs, height: bs)
     let checkedPath = CGPath(roundedRect: checkedRect,
                              cornerWidth: cr, cornerHeight: cr, transform: nil)
 
     ctx.setFillColor(p.checkedFill)
     ctx.addPath(checkedPath); ctx.fillPath()
 
-    ctx.setStrokeColor(p.checkedStroke)
-    ctx.setLineWidth(lw)
-    ctx.addPath(checkedPath); ctx.strokePath()
-
-    // Checkmark — vertex is the lowest visual point (smallest y in CGContext)
+    // White checkmark — clean, precise V
+    let cmLW = max(1.5, s * 0.030)
     ctx.setStrokeColor(p.checkmark)
-    ctx.setLineWidth(lw * 1.55)
-    ctx.move(to:    CGPoint(x: ox + bs*0.19, y: checkedOriginY + bs*0.52))
-    ctx.addLine(to: CGPoint(x: ox + bs*0.42, y: checkedOriginY + bs*0.27))
-    ctx.addLine(to: CGPoint(x: ox + bs*0.82, y: checkedOriginY + bs*0.73))
+    ctx.setLineWidth(cmLW)
+    ctx.setLineCap(.round)
+    ctx.setLineJoin(.round)
+    ctx.move(to:    CGPoint(x: rowX + bs * 0.22, y: checkedY + bs * 0.50))
+    ctx.addLine(to: CGPoint(x: rowX + bs * 0.43, y: checkedY + bs * 0.28))
+    ctx.addLine(to: CGPoint(x: rowX + bs * 0.78, y: checkedY + bs * 0.70))
     ctx.strokePath()
 
-    // ── Unchecked box (below, visually underneath) ────────────────────────
+    // Text pill
+    if size >= 32 {
+        let tlY = checkedY + (bs - tlH) / 2
+        let r1  = CGRect(x: rowX + bs + itemGap, y: tlY, width: tl1W, height: tlH)
+        ctx.setFillColor(p.textLine)
+        ctx.addPath(CGPath(roundedRect: r1, cornerWidth: tlCR, cornerHeight: tlCR, transform: nil))
+        ctx.fillPath()
+    }
 
-    let uncheckedRect = CGRect(x: ox, y: uncheckedOriginY, width: bs, height: bs)
+    // ── Unchecked box — thin copper-tinted stroke, no fill ────────────────
+    let uncheckedRect = CGRect(x: rowX, y: uncheckedY, width: bs, height: bs)
     let uncheckedPath = CGPath(roundedRect: uncheckedRect,
                                cornerWidth: cr, cornerHeight: cr, transform: nil)
 
     ctx.setStrokeColor(p.uncheckedStroke)
     ctx.setLineWidth(lw)
     ctx.addPath(uncheckedPath); ctx.strokePath()
+
+    // Text pill
+    if size >= 32 {
+        let tlY = uncheckedY + (bs - tlH) / 2
+        let r2  = CGRect(x: rowX + bs + itemGap, y: tlY, width: tl2W, height: tlH)
+        ctx.setFillColor(p.textLine)
+        ctx.addPath(CGPath(roundedRect: r2, cornerWidth: tlCR, cornerHeight: tlCR, transform: nil))
+        ctx.fillPath()
+    }
 
     return ctx.makeImage()!
 }
