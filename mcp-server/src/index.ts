@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { execSync } from "child_process";
 import {
+  TodoItem,
   readTodos,
   writeTodos,
   createTodo,
@@ -10,12 +11,6 @@ import {
   deleteTodo,
   formatTodoList,
 } from "./todo-store.js";
-
-// ---------------------------------------------------------------------------
-// Side-effect wrapper — save + notify the running app
-// ---------------------------------------------------------------------------
-
-import { TodoItem } from "./todo-store.js";
 
 function saveAndNotify(todos: TodoItem[]): void {
   writeTodos(todos);
